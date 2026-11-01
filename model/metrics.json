@@ -1,0 +1,12 @@
+{
+  "timesteps": 60,
+  "jumlah_data_latih": 1934,
+  "jumlah_data_uji": 499,
+  "rmse": 20.8728,
+  "mae": 16.1137,
+  "mape_persen": 0.8527,
+  "rmse_baseline_naif": 17.3524,
+  "mae_baseline_naif": 12.9671,
+  "tanggal_uji_awal": "2022-01-20",
+  "tanggal_uji_akhir": "2024-01-19"
+}

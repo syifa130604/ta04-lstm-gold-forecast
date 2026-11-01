@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peramalan Harga Emas dengan LSTM</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23d4a017'/%3E%3Ctext x='50' y='66' font-size='46' text-anchor='middle' fill='%233b2a0a' font-family='Georgia'%3EAu%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-isi">
+      <p class="lencana">Tugas Akhir 04 &middot; Pembelajaran Mesin</p>
+      <h1>Peramalan Harga <span class="emas">Emas</span> Harian</h1>
+      <p class="deskripsi" id="subjudul">Model LSTM untuk memprediksi harga penutupan emas.</p>
+      <a href="#ramalan" class="tombol-emas">Coba Ramalan</a>
+    </div>
+
+    <svg class="batangan" viewBox="0 0 380 270" role="img" aria-label="Tumpukan emas batangan">
+      <defs>
+        <linearGradient id="gBadan" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f9e08a"/><stop offset="0.45" stop-color="#e2b126"/><stop offset="1" stop-color="#9a6f0b"/>
+        </linearGradient>
+        <linearGradient id="gAtas" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#fff7cf"/><stop offset="1" stop-color="#f0c53c"/>
+        </linearGradient>
+        <radialGradient id="gKoin" cx="0.35" cy="0.3" r="0.9">
+          <stop offset="0" stop-color="#fff2b3"/><stop offset="0.5" stop-color="#e5b422"/><stop offset="1" stop-color="#8f650a"/>
+        </radialGradient>
+        <radialGradient id="gCahaya" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stop-color="#f6d356" stop-opacity="0.55"/><stop offset="1" stop-color="#f6d356" stop-opacity="0"/>
+        </radialGradient>
+        <g id="batang">
+          <polygon points="16,0 88,0 104,44 0,44" fill="url(#gBadan)" stroke="#8a6209" stroke-width="1.2"/>
+          <polygon points="24,6 80,6 90,24 14,24" fill="url(#gAtas)" opacity="0.95"/>
+          <text x="52" y="38" text-anchor="middle" font-family="Georgia, serif" font-size="9" fill="#5b4006" opacity="0.75">Au 999.9</text>
+        </g>
+        <g id="kilau"><path d="M0,-9 L2,-2 L9,0 L2,2 L0,9 L-2,2 L-9,0 L-2,-2 Z" fill="#fff4bd"/></g>
+      </defs>
+
+      <ellipse cx="190" cy="140" rx="190" ry="130" fill="url(#gCahaya)"/>
+      <ellipse cx="190" cy="248" rx="150" ry="12" fill="#000" opacity="0.28"/>
+
+      <use href="#batang" x="26" y="196"/>
+      <use href="#batang" x="138" y="196"/>
+      <use href="#batang" x="250" y="196"/>
+      <use href="#batang" x="82" y="148"/>
+      <use href="#batang" x="194" y="148"/>
+      <use href="#batang" x="138" y="100"/>
+
+      <circle cx="352" cy="236" r="22" fill="url(#gKoin)" stroke="#8a6209" stroke-width="1.5"/>
+      <circle cx="352" cy="236" r="16" fill="none" stroke="#8a6209" stroke-width="1" opacity="0.6"/>
+      <text x="352" y="242" text-anchor="middle" font-family="Georgia, serif" font-size="17" font-weight="bold" fill="#6b4a05">Au</text>
+      <circle cx="46" cy="176" r="15" fill="url(#gKoin)" stroke="#8a6209" stroke-width="1.2"/>
+
+      <use href="#kilau" x="96" y="96" class="kilau k1"/>
+      <use href="#kilau" x="300" y="120" class="kilau k2"/>
+      <use href="#kilau" x="190" y="58" class="kilau k3"/>
+    </svg>
+  </header>
+
+  <main>
+    <section class="kartu-metrik" id="metrik"></section>
+
+    <section class="panel">
+      <div class="panel-kepala">
+        <h2>Data Historis Harga Penutupan</h2>
+        <div class="rentang" data-target="hist">
+          <button data-n="21">1 Bln</button>
+          <button data-n="126">6 Bln</button>
+          <button data-n="252">1 Thn</button>
+          <button data-n="1260">5 Thn</button>
+          <button data-n="0" class="aktif">Semua</button>
+        </div>
+      </div>
+      <div class="kotak-grafik"><canvas id="chartHist"></canvas></div>
+      <p class="catatan">Garis putus-putus adalah rata-rata bergerak 30 hari untuk melihat arah tren.</p>
+    </section>
+
+    <section class="panel">
+      <div class="panel-kepala">
+        <h2>Prediksi vs Harga Aktual (Data Uji)</h2>
+        <div class="rentang" data-target="test">
+          <button data-n="60">60 Hari</button>
+          <button data-n="250">1 Thn</button>
+          <button data-n="0" class="aktif">Semua</button>
+        </div>
+      </div>
+      <div class="kotak-grafik"><canvas id="chartTest"></canvas></div>
+      <p class="catatan" id="catatanModel"></p>
+    </section>
+
+    <section class="panel" id="ramalan">
+      <div class="panel-kepala">
+        <h2>Ramalan ke Depan</h2>
+        <form id="formRamal" class="form-ramal">
+          <label for="hari">Jumlah hari kerja</label>
+          <input type="number" id="hari" min="1" max="14" value="7">
+          <button type="submit" class="utama">Ramal</button>
+        </form>
+      </div>
+      <p id="pesanRamal" class="catatan">Pilih jumlah hari lalu tekan tombol Ramal.</p>
+      <div class="kotak-grafik" id="kotakRamal" hidden><canvas id="chartRamal"></canvas></div>
+      <div class="tabel-bungkus"><table id="tabelRamal" hidden>
+        <thead><tr><th>Tanggal</th><th>Ramalan Close</th><th>Selisih dari harga terakhir</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <section class="panel peringatan">
+      <h2>Catatan Penting</h2>
+      <ul>
+        <li>Ramalan beberapa hari memakai hasil prediksi sebelumnya sebagai input, sehingga makin jauh harinya makin tidak pasti.</li>
+        <li>Data berhenti pada tanggal terakhir dataset, jadi ramalan dihitung dari tanggal tersebut. Hari libur bursa tidak diperhitungkan.</li>
+        <li>Aplikasi ini adalah proyek pembelajaran dan <strong>bukan saran investasi</strong>.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <span class="emas-kecil">Au</span> Dibuat dengan Flask, NumPy, dan model LSTM (TensorFlow/Keras) &middot; TA-04 Pembelajaran Mesin
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
